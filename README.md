@@ -1,6 +1,6 @@
 # Course "Learn Python" on learn.python.ru
 
-The TBot folder consists of a Telegram bot code in Python with information about the position of planets and connected to AI site.
+The TBot folder contains the Telegram bot code in Python which can get information about the position of planets and which connected to AI site on https://dialogflow.com/.
 Same aditional information in article: https://habr.com/ru/post/346606/
 
 Now here are assignments of:
