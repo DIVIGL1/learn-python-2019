@@ -87,7 +87,8 @@ def talk_to_me(bot, update):
         planet_name = set(message_text.split(" "))
         planet_name.discard("")
         planet_name.discard("/planet")
-        planet_info = get_planet_info(planet_name[0])
+        planet_name = list(planet_name)[0]
+        planet_info = get_planet_info(planet_name)
         if not planet_info:
             response = "Птанеты с таким именем не найдено..."
         else:
