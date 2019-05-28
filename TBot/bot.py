@@ -131,7 +131,7 @@ def command_cities(bot, update):
     city_name = message_text.replace("/cities","").strip().capitalize()
     if city_name=="":
         my_loger("Got a command /cities without city.")
-        bot.send_message(chat_id=update.message.chat_id, text="Вы не укзали наименование города.")
+        bot.send_message(chat_id=update.message.chat_id, text="Вы не указали наименование города.")
         return()
     my_loger("Got a command /cities with city: " + city_name)
     last_mentioned_city = city_name
@@ -156,6 +156,38 @@ def command_cities(bot, update):
         my_loger("Bad answer: " + city_name)
         # Сообщение об ошибочно названном городе уже было отправлено перед if.
 
+def command_calc(bot, update):
+    # Получили сомманду c двумя числами:
+    message_text = update.message.text.strip()
+    expression_str = message_text.replace("/calc","").strip().capitalize()
+    if expression_str=="":
+        my_loger("Got a command /calc without 2-number expression.")
+        bot.send_message(chat_id=update.message.chat_id, text="Вы не указали выражение из двух чисел.")
+        return()
+    expression_str = expression_str.replace(" ","")
+    my_loger("Got a command /calc with expression: " + expression_str)
+    for one_sign in ["+","-","*","/"]:
+        if one_sign in expression_str:
+            operation_sign = one_sign
+            break
+    number1 = expression_str.split(operation_sign)[0]
+    number2 = expression_str.split(operation_sign)[1]
+    if not ((number1.upper()==number1.lower()) and (number2.upper()==number2.lower())):
+        bot.send_message( 
+            chat_id=update.message.chat_id, 
+            text="В этом калькулятоне в качестве аргументов можно использовать только числа!")
+        return()
+
+    # Протестируем на возможные ошибки:
+    try:
+        expression_result = eval(number1+operation_sign+number2)
+        bot.send_message( 
+            chat_id=update.message.chat_id, 
+            text="Результатом вычисления выражения {} {} {} будет {}".format(number1,operation_sign,number2,expression_result))
+    except ZeroDivisionError:
+        bot.send_message( 
+            chat_id=update.message.chat_id, 
+            text="Вычислить выражение {} {} {} нельзя - деление на ноль.".format(number1,operation_sign,number2))
 
 def command_wordcount(bot, update):
     # Получили сомманду для вывода информации о количестве слов в предложении:
@@ -205,7 +237,8 @@ def command_start(bot, update):
         "1. /planet pn  - (where 'pn' - planet name) helps you want to get information about planet.\n" + \
         "2. /wordcount sentance  - counts words :-)\n" + \
         "3. /next_full_moon date  - calculates nearest full moon after date.\n" + \
-        "4. /cities city  - Game 'city'"
+        "4. /cities city  - Game 'city'\n" + \
+        "5. /calc 2ne  - (where '2ne' - 2-number expression) calculates 2-number expressions"
 
     update.message.reply_text(message)
     test_new_city() # Иницируем список горродов.
@@ -260,6 +293,7 @@ def main():
     dp.add_handler(CommandHandler("wordcount", command_wordcount))
     dp.add_handler(CommandHandler("next_full_moon", command_next_full_moon))
     dp.add_handler(CommandHandler("cities", command_cities))
+    dp.add_handler(CommandHandler("calc", command_calc))
     
     dp.add_handler(MessageHandler(Filters.text, talk_to_me))
     test_new_city() # Иницируем список горродов.
