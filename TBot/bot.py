@@ -97,10 +97,7 @@ def command_next_full_moon(bot, update):
     try:
         param_date = list(param_date)[0]
         param_date = datetime.datetime.strptime(param_date, '%Y/%m/%d')
-    except ValueError:
-        param_date = datetime.datetime.now()
-        bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
-    except IndexError:
+    except (ValueError,IndexError):
         param_date = datetime.datetime.now()
         bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
 
