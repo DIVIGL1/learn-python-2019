@@ -4,7 +4,9 @@ import apiai
 import json
 import ephem
 import datetime
-
+import time
+import pandas as pd
+import os
 
 PROXY = {'proxy_url': 'socks5://t1.learn.python.ru:1080',
     'urllib3_proxy_kwargs': {'username': 'learn', 'password': 'python'}}
@@ -41,6 +43,8 @@ ALL_PLANETS = {
         }
 
 #PROXY = {'proxy_url': 'socks5://localhost:9050'} 
+last_mentioned_city = ""
+cities_list = {}
 
 def get_planet_info(planet_name,year=0,month=0,day=0):
     thisday = datetime.datetime.now()
@@ -64,13 +68,94 @@ def command_planet(bot, update):
     my_loger("Got a command /planet with name: " + planet_name)
     planet_info = get_planet_info(planet_name)
     if not planet_info:
-        response = "Птанеты с таким именем не найдено..."
+        response = "Планеты с таким именем не найдено..."
     else:
         response = "{} сейчас находится в созвездии {}".format(planet_name,planet_info)
 
     bot.send_message(chat_id=update.message.chat_id, text=response)
 
     my_loger("Answer: " + response)
+
+def test_new_city(city_name="InitCityList"):
+    global last_mentioned_city, cities_list
+    if city_name=="InitCityList":
+        ''' Получим из csv-файла словарь типа:
+            {   'Москва': 0,
+                'Абрамцево': 0,
+                'Алабино': 0,
+                'Апрелевка': 0,
+                'Архангельское': 0}
+        '''
+        if os.path.isfile("Cities.csv"):
+            city_file_name = "Cities.csv"
+        elif os.path.isfile("TBot\Cities.csv"):
+            city_file_name = "TBot\Cities.csv"
+        else:
+            my_loger("Не найден файл с перечнем городов!")
+        cities_list = pd.read_csv(city_file_name, encoding="cp1251", index_col="name", sep=";")
+        cities_list["used"] = 0 # На всякий случай обнулим.
+        cities_list = cities_list.to_dict()["used"]
+        print("< ЗАГРУЖЕН СПИСОК ГОРОДОВ >")
+        return(True,"")
+    elif city_name=="GetNewCity":
+        # Время ответа Бота. Последний правильный ответ хранится в last_mentioned_city
+        for one_city_name in cities_list.keys():
+            if (cities_list[one_city_name]==0) and (one_city_name[0].lower()==last_mentioned_city[-1].lower()):
+                print("Bot answer:",one_city_name)
+                cities_list[one_city_name]==1
+                last_mentioned_city = one_city_name.lower().capitalize()
+                return(True,"Я назову город '{}'. С Вас город на '{}'".format(last_mentioned_city,last_mentioned_city[-1].upper()))
+        return(False, "Я не знаю городов на букву '{}'. Вы выиграли! Поздравляю!".format(last_mentioned_city[-1].upper()))
+    else:
+        # Это значит, что передан город от пользователя и его надо проверить.
+        city_name = city_name.lower().capitalize()
+        if not last_mentioned_city=="":
+            if not (city_name[0].lower()==last_mentioned_city[-1].lower()):
+                return(False,"Город должен начинаться с буквы '{}'! Попробуйте ещё раз.".format(city_name[0].upper()))
+        used_type = cities_list.get(city_name,-1)
+        if used_type==-1:
+            return(False,"Такого города НЕ существует! Попробуйте ещё раз.")
+        elif used_type==0:
+            # Сохраним последний правильный город и пометим его как использованный.
+            last_mentioned_city = city_name
+            cities_list[city_name] = 1
+            return(True,"'{}'. Такой город существует!".format(city_name.lower().capitalize()))
+        elif used_type==1:
+            return(False,"'{}'. Этот город уже называли! Выберите другой.".format(city_name.lower().capitalize()))
+        else:
+            return(False,"Что-то пошло не так.... У меня в коде ошибка!")
+
+def command_cities(bot, update):
+    # Получили сомманду c наименованием города:
+    message_text = update.message.text.strip()
+    city_name = message_text.replace("/cities","").strip().capitalize()
+    if city_name=="":
+        my_loger("Got a command /cities without city.")
+        bot.send_message(chat_id=update.message.chat_id, text="Вы не укзали наименование города.")
+        return()
+    my_loger("Got a command /cities with city: " + city_name)
+    last_mentioned_city = city_name
+    # Проверим город на наличие и повторное использование:
+    ret_code, ret_text = test_new_city(city_name)
+    bot.send_message(chat_id=update.message.chat_id, text=ret_text)
+    if ret_code:
+        my_loger("Good answer: " + city_name)
+        # Сообщение о том какой город был назван.
+        bot.send_message(chat_id=update.message.chat_id, text="Он заканчивается на букву '{}'".format(city_name[-1].upper()))
+        bot.send_message(chat_id=update.message.chat_id, text="Тогда я называю город... секундочку...")
+        time.sleep(1)
+        ret_code, ret_text = test_new_city("GetNewCity")
+        bot.send_message(chat_id=update.message.chat_id, text=ret_text)
+        if ret_code:
+            pass
+        else:
+            test_new_city()
+            last_mentioned_city = ""
+            bot.send_message(chat_id=update.message.chat_id, text="Игра будут начата с самого начала.")
+    else:
+        my_loger("Bad answer: " + city_name)
+        # Сообщение об ошибочно названном городе уже было отправлено перед if.
+
 
 def command_wordcount(bot, update):
     # Получили сомманду для вывода информации о количестве слов в предложении:
@@ -97,13 +182,13 @@ def command_next_full_moon(bot, update):
     try:
         param_date = list(param_date)[0]
         param_date = datetime.datetime.strptime(param_date, '%Y/%m/%d')
-    except (ValueError,IndexError):
+    except (ValueError, IndexError):
         param_date = datetime.datetime.now()
         bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
 
     my_loger("Got a command /next_full_moon with date: " + param_date.strftime('%Y-%m-%d'))
     response = ephem.next_full_moon(param_date)
-    response = "Ближайшее к {} новолуние состося {}".format(param_date.strftime('%Y-%m-%d'),response.datetime().strftime('%Y-%m-%d'))
+    response = "Ближайшее к {} новолуние состоится {}".format(param_date.strftime('%Y-%m-%d'),response.datetime().strftime('%Y-%m-%d'))
 
     bot.send_message(chat_id=update.message.chat_id, text=response)
 
@@ -111,16 +196,19 @@ def command_next_full_moon(bot, update):
 
 def command_start(bot, update):
     # Получили сомманду /start
+    global last_mentioned_city
+    last_mentioned_city = ""
+
     log_text = "Got a command: /start"
     my_loger(log_text)
     message = \
-        "1. /planet pn (where 'pn' - planet name) helps you want to get information about planet." + \
-        "\n" + \
-        "2. /wordcount sentance counts words :-)" + \
-        "\n" + \
-        "3. /next_full_moon date - calculates nearest full moon after date."
+        "1. /planet pn  - (where 'pn' - planet name) helps you want to get information about planet.\n" + \
+        "2. /wordcount sentance  - counts words :-)\n" + \
+        "3. /next_full_moon date  - calculates nearest full moon after date.\n" + \
+        "4. /cities city  - Game 'city'"
 
     update.message.reply_text(message)
+    test_new_city() # Иницируем список горродов.
 
 def talk_to_me(bot, update):
     # Получили сообщение введённое пользователем в клиенте и залогим его:
@@ -171,8 +259,10 @@ def main():
     dp.add_handler(CommandHandler("planet", command_planet))
     dp.add_handler(CommandHandler("wordcount", command_wordcount))
     dp.add_handler(CommandHandler("next_full_moon", command_next_full_moon))
+    dp.add_handler(CommandHandler("cities", command_cities))
     
     dp.add_handler(MessageHandler(Filters.text, talk_to_me))
+    test_new_city() # Иницируем список горродов.
 
     mybot.start_polling()
     mybot.idle()
