@@ -56,18 +56,57 @@ def get_planet_info(planet_name,year=0,month=0,day=0):
 
 def command_planet(bot, update):
     # Получили сомманду для вывода информации о планете:
-    my_loger("Got a command /planet with name: " + update.message.text)
     message_text = update.message.text.strip()
     planet_name = set(message_text.split(" "))
     planet_name.discard("")
     planet_name.discard("/planet")
-    planet_name = list(planet_name)[0]
+    planet_name = list(planet_name)[0].capitalize()
     my_loger("Got a command /planet with name: " + planet_name)
     planet_info = get_planet_info(planet_name)
     if not planet_info:
         response = "Птанеты с таким именем не найдено..."
     else:
-        response = "Планета {} сейчас находится в созвездии {}".format(planet_name,planet_info)
+        response = "{} сейчас находится в созвездии {}".format(planet_name,planet_info)
+
+    bot.send_message(chat_id=update.message.chat_id, text=response)
+
+    my_loger("Answer: " + response)
+
+def command_wordcount(bot, update):
+    # Получили сомманду для вывода информации о количестве слов в предложении:
+    message_text = update.message.text.strip()
+    sentance = set(message_text.split(" "))
+    sentance.discard("")
+    sentance.discard("/wordcount")
+    my_loger("Got a command /wordcount with sentance: " + " ".join(list(sentance)))
+    if len(sentance)==0:
+        response = "Не введено ни одного слова."
+    else:
+        response = "Количество введенных слов - {} шт.".format(len(sentance))
+
+    bot.send_message(chat_id=update.message.chat_id, text=response)
+
+    my_loger("Answer: " + response)
+
+def command_next_full_moon(bot, update):
+    # Получили сомманду для вывода информации о ближайшем полнолунии:
+    message_text = update.message.text.strip()
+    param_date = set(message_text.split(" "))
+    param_date.discard("")
+    param_date.discard("/next_full_moon")
+    try:
+        param_date = list(param_date)[0]
+        param_date = datetime.datetime.strptime(param_date, '%Y/%m/%d')
+    except ValueError:
+        param_date = datetime.datetime.now()
+        bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
+    except IndexError:
+        param_date = datetime.datetime.now()
+        bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
+
+    my_loger("Got a command /next_full_moon with date: " + param_date.strftime('%Y-%m-%d'))
+    response = ephem.next_full_moon(param_date)
+    response = "Ближайшее к {} новолуние состося {}".format(param_date.strftime('%Y-%m-%d'),response.datetime().strftime('%Y-%m-%d'))
 
     bot.send_message(chat_id=update.message.chat_id, text=response)
 
@@ -77,7 +116,14 @@ def command_start(bot, update):
     # Получили сомманду /start
     log_text = "Got a command: /start"
     my_loger(log_text)
-    update.message.reply_text("You can use command /planet pn (where 'pn' - planet name) if you want to get information about planet.")
+    message = \
+        "1. /planet pn (where 'pn' - planet name) helps you want to get information about planet." + \
+        "\n" + \
+        "2. /wordcount sentance counts words :-)" + \
+        "\n" + \
+        "3. /next_full_moon date - calculates nearest full moon after date."
+
+    update.message.reply_text(message)
 
 def talk_to_me(bot, update):
     # Получили сообщение введённое пользователем в клиенте и залогим его:
@@ -119,13 +165,16 @@ def main():
                         level=logging.INFO,
                         filename='bot.log'
                         )
-    my_loger("Program started")
+    my_loger("The 'Bot' started")
     
     mybot = Updater("807610709:AAHxSZ2MGfEUuOi2_Oj8bv4wKCYkJQzeVAI", request_kwargs=PROXY)
 
     dp = mybot.dispatcher
     dp.add_handler(CommandHandler("start", command_start))
     dp.add_handler(CommandHandler("planet", command_planet))
+    dp.add_handler(CommandHandler("wordcount", command_wordcount))
+    dp.add_handler(CommandHandler("next_full_moon", command_next_full_moon))
+    
     dp.add_handler(MessageHandler(Filters.text, talk_to_me))
 
     mybot.start_polling()
