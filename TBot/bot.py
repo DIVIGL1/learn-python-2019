@@ -88,8 +88,8 @@ def test_new_city(city_name="InitCityList"):
         '''
         if os.path.isfile("Cities.csv"):
             city_file_name = "Cities.csv"
-        elif os.path.isfile("TBot\Cities.csv"):
-            city_file_name = "TBot\Cities.csv"
+        elif os.path.isfile("TBot/Cities.csv"):
+            city_file_name = "TBot/Cities.csv"
         else:
             my_loger("Не найден файл с перечнем городов!")
         cities_list = pd.read_csv(city_file_name, encoding="cp1251", index_col="name", sep=";")
@@ -126,6 +126,7 @@ def test_new_city(city_name="InitCityList"):
             return(False,"Что-то пошло не так.... У меня в коде ошибка!")
 
 def command_cities(bot, update):
+    global last_mentioned_city
     # Получили сомманду c наименованием города:
     message_text = update.message.text.strip()
     city_name = message_text.replace("/cities","").strip().capitalize()
@@ -134,7 +135,6 @@ def command_cities(bot, update):
         bot.send_message(chat_id=update.message.chat_id, text="Вы не указали наименование города.")
         return()
     my_loger("Got a command /cities with city: " + city_name)
-    last_mentioned_city = city_name
     # Проверим город на наличие и повторное использование:
     ret_code, ret_text = test_new_city(city_name)
     bot.send_message(chat_id=update.message.chat_id, text=ret_text)
