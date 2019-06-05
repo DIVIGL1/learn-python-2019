@@ -37,3 +37,8 @@ BOT_ID = "807610709:AAHxSZ2MGfEUuOi2_Oj8bv4wKCYkJQzeVAI"
 AI_ID = "596138ef4ca148c3989ba7ead4091cd6"
 
 USER_EMOJI = [':smiley_cat:', ':smiling_imp:', ':panda_face:', ':dog:']
+
+MY_KEYBOARD = [ ["Когда полнолуние", "Начать игру в города", "Прислать слоника"] ]
+PLAY_CITY_TEXT = MY_KEYBOARD[0][1]
+FULL_MOON_TEXT = MY_KEYBOARD[0][0]
+

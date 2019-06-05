@@ -11,7 +11,8 @@ from emoji import emojize
 from glob import glob
 from random import choice
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import ReplyKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, RegexHandler
 
 import bot_settings
 
@@ -110,11 +111,22 @@ def command_cities(bot, update):
     # Получили сомманду c наименованием города:
     message_text = update.message.text.strip()
     city_name = message_text.replace("/cities","").strip().capitalize()
-    if city_name=="":
+    if ( \
+            ((city_name=="") and (last_mentioned_city=="")) \
+            or (city_name==bot_settings.PLAY_CITY_TEXT) \
+        ):
+        # Установим признаком того, что это начало игры,
+        # а bot должен дать первое слово
+        last_mentioned_city = "Нижний Новгород"
+        message = "{} Начинам игру в города.\nЯ называю город: {}".format(emo_smile, last_mentioned_city)
+        bot.send_message(chat_id=update.message.chat_id, text=message)
+        return()
+    else:
         my_loger("Got a command /cities without city.")
-        bot.send_message(chat_id=update.message.chat_id, text="Вы не указали наименование города.")
+        bot.send_message(chat_id=update.message.chat_id, text="Вы не указали наименование города.\n(для рестарта игры напечатайте /start а потом /cities)")
         return()
     my_loger("Got a command /cities with city: " + city_name)
+
     # Проверим город на наличие и повторное использование:
     ret_code, ret_text = test_new_city(city_name=city_name)
     bot.send_message(chat_id=update.message.chat_id, text=ret_text)
@@ -187,16 +199,18 @@ def command_wordcount(bot, update):
 
 def command_next_full_moon(bot, update):
     # Получили сомманду для вывода информации о ближайшем полнолунии:
-    message_text = update.message.text.strip()
-    param_date = set(message_text.split(" "))
-    param_date.discard("")
-    param_date.discard("/next_full_moon")
-    try:
-        param_date = list(param_date)[0]
-        param_date = datetime.datetime.strptime(param_date, '%Y/%m/%d')
-    except (ValueError, IndexError):
+    message_text = update.message.text.replace(bot_settings.FULL_MOON_TEXT,"").replace("/next_full_moon","").strip()
+    if message_text.replace(" ","")=="":
         param_date = datetime.datetime.now()
-        bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
+    else:
+        param_date = set(message_text.split(" "))
+        param_date.discard("")
+        param_date = list(param_date)[0]
+        try:
+            param_date = datetime.datetime.strptime(param_date, '%Y/%m/%d')
+        except (ValueError, IndexError):
+            param_date = datetime.datetime.now()
+            bot.send_message(chat_id=update.message.chat_id, text="Вы ввели не правильную дату!")
 
     my_loger("Got a command /next_full_moon with date: " + param_date.strftime('%Y-%m-%d'))
     response = ephem.next_full_moon(param_date)
@@ -220,8 +234,11 @@ def command_start(bot, update):
         "4. /cities city  - Game 'city'\n" + \
         "5. /calc 2ne  - (where '2ne' - 2-number expression) calculates 2-number expressions\n" +\
         "6. /elephant  - shows you an elephant photo."
-    
-    update.message.reply_text(message)
+
+    my_keyboard = ReplyKeyboardMarkup(bot_settings.MY_KEYBOARD)
+    update.message.reply_text(message, reply_markup=my_keyboard)
+
+
     test_new_city() # Иницируем список горродов.
 
 def talk_with_ai(bot, update):
@@ -268,6 +285,10 @@ def main():
     dp.add_handler(CommandHandler("next_full_moon", command_next_full_moon))
     dp.add_handler(CommandHandler("planet", command_planet))
     dp.add_handler(CommandHandler("wordcount", command_wordcount))
+
+    dp.add_handler(RegexHandler("^Прислать слоника$",command_elephant))
+    dp.add_handler(RegexHandler("^Когда полнолуние$",command_next_full_moon))
+    dp.add_handler(RegexHandler("^Начать игру в города$",command_cities))
     
     # Важно, что бы следующая строка была после всех "dp.add_handler(CommandHandler(",
     # иначе она будет перехватывать все сообщения первой.
