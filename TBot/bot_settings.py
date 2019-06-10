@@ -1,3 +1,9 @@
+from random import choice
+
+from emoji import emojize
+
+import bot_settings
+
 PROXY = {'proxy_url': 'socks5://t1.learn.python.ru:1080',
     'urllib3_proxy_kwargs': {'username': 'learn', 'password': 'python'}}
 #PROXY = {'proxy_url': 'socks5://localhost:9050'} 
@@ -41,4 +47,9 @@ USER_EMOJI = [':smiley_cat:', ':smiling_imp:', ':panda_face:', ':dog:']
 MY_KEYBOARD = [ ["Когда полнолуние", "Начать игру в города", "Прислать слоника"] ]
 PLAY_CITY_TEXT = MY_KEYBOARD[0][1]
 FULL_MOON_TEXT = MY_KEYBOARD[0][0]
+emo_smile = ""
+last_mentioned_city = ""
+
+if __name__ == "bot":
+    emo_smile = emojize(choice(bot_settings.USER_EMOJI),use_aliases=True)
 
